@@ -76,7 +76,33 @@ async function getAuditLogs(options = {}) {
   }));
 }
 
+async function logAction({ req, entityType, entityId, operation, outcome = 'success', beforeState = null, afterState = null, details = {} }) {
+  try {
+    const actorId = req?.user?.id || 'system';
+    const actorUsername = req?.user?.username || 'system';
+    const actorRole = req?.user?.role || 'user';
+    const clientId = req?.user?.clientIds?.[0] || null;
+
+    await logAudit({
+      actorId,
+      actorUsername,
+      actorRole,
+      clientId,
+      entityType,
+      entityId,
+      operation,
+      outcome,
+      beforeState,
+      afterState,
+      details
+    });
+  } catch (err) {
+    console.error('[AUDIT LOG ACTION ERROR]', err.message);
+  }
+}
+
 module.exports = {
   logAudit,
+  logAction,
   getAuditLogs
 };

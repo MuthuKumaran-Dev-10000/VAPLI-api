@@ -11,24 +11,28 @@ async function runMigration() {
     return;
   }
 
-  const sqlFile = path.join(__dirname, '001_initial_schema.sql');
-  const sql = fs.readFileSync(sqlFile, 'utf8');
+  const files = fs.readdirSync(__dirname).filter(f => f.endsWith('.sql')).sort();
 
-  // Split multi-statement SQL
-  const statements = sql
-    .split(';')
-    .map(s => s.trim())
-    .filter(s => s.length > 0);
+  for (const file of files) {
+    console.log(`[MIGRATION] Running ${file}...`);
+    const sqlFile = path.join(__dirname, file);
+    const sql = fs.readFileSync(sqlFile, 'utf8');
 
-  for (const stmt of statements) {
-    try {
-      await db.query(stmt);
-    } catch (err) {
-      console.error(`[MIGRATION ERROR] Failed executing statement: ${stmt.substring(0, 50)}...`, err.message);
+    const statements = sql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    for (const stmt of statements) {
+      try {
+        await db.query(stmt);
+      } catch (err) {
+        console.error(`[MIGRATION ERROR] Failed executing statement in ${file}: ${stmt.substring(0, 50)}...`, err.message);
+      }
     }
   }
 
-  console.log('[MIGRATION] Schema migration completed successfully!');
+  console.log('[MIGRATION] All schema migrations completed successfully!');
 }
 
 if (require.main === module) {

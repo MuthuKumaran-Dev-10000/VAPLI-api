@@ -1,0 +1,12 @@
+[DB] Connected successfully to MySQL database 'vapli_db' at 127.0.0.1:3306
+====================================================
+🚀 VAPLI Greenfield Node.js API Server running on 0.0.0.0:8081
+====================================================
+[UPLOADS] Saved QR image to /Users/vap/Neugenx/vapli-api/uploads/qr/mt1_Muthu.png → http://192.168.1.109:8081/uploads/qr/mt1_Muthu.png
+[UPLOADS] Saved QR image to /Users/vap/Neugenx/vapli-api/uploads/qr/g1_gokul.png → http://192.168.1.109:8081/uploads/qr/g1_gokul.png
+[UPLOADS] Saved QR image to /Users/vap/Neugenx/vapli-api/uploads/qr/g1_g2.png → http://192.168.1.109:8081/uploads/qr/g1_g2.png
+[UPLOADS] Saved QR image to /Users/vap/Neugenx/vapli-api/uploads/qr/m2_mukun.png → http://192.168.1.109:8081/uploads/qr/m2_mukun.png
+[UPLOADS] Saved QR image to /Users/vap/Neugenx/vapli-api/uploads/qr/m3_Madesh.png → http://192.168.1.109:8081/uploads/qr/m3_Madesh.png
+[UPLOADS] Saved QR image to /Users/vap/Neugenx/vapli-api/uploads/qr/mt1_Muthu.png → http://192.168.1.109:8081/uploads/qr/mt1_Muthu.png
+[UPLOADS] Saved QR image to /Users/vap/Neugenx/vapli-api/uploads/qr/a1_akash.png → http://192.168.1.109:8081/uploads/qr/a1_akash.png
+[UPLOADS] Saved QR image to /Users/vap/Neugenx/vapli-api/uploads/qr/a1_8994_akash__1_.png → http://192.168.1.109:8081/uploads/qr/a1_8994_akash__1_.png
