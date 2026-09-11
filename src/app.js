@@ -7,6 +7,7 @@ const usersRoutes = require('./modules/users/users.routes');
 const assetsRoutes = require('./modules/assets/assets.routes');
 const readingsRoutes = require('./modules/readings/readings.routes');
 const uploadsRoutes = require('./modules/uploads/uploads.routes');
+const settingsRoutes = require('./modules/settings/settings.routes');
 const { errorHandler } = require('./middleware/error.middleware');
 const { successResponse } = require('./core/response');
 const auditService = require('./modules/audit/audit.service');
@@ -31,6 +32,7 @@ app.use('/api/v1/users', usersRoutes);
 app.use('/api/v1/assets', assetsRoutes);
 app.use('/api/v1/readings', readingsRoutes);
 app.use('/api/v1/uploads', uploadsRoutes);
+app.use('/api/v1/settings', settingsRoutes);
 
 // Audit logs route
 app.get('/api/v1/audit-logs', async (req, res, next) => {
