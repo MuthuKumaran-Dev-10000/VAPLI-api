@@ -19,17 +19,34 @@ class UserRepository {
 
   async findAll() {
     const [rows] = await db.query(
-      `SELECT id, username, display_name, email, phone, role, is_active, created_at, last_login_at FROM users ORDER BY username ASC`
+      `SELECT u.id, u.username, u.display_name, u.email, u.phone, u.role, u.client_id, u.is_active, u.created_at, u.last_login_at,
+              GROUP_CONCAT(uc.client_id) AS client_ids_str
+       FROM users u
+       LEFT JOIN user_clients uc ON u.id = uc.user_id AND uc.is_active = 1
+       GROUP BY u.id
+       ORDER BY u.username ASC`
     );
-    return rows;
+    return rows.map(r => {
+      const { client_ids_str, ...user } = r;
+      const ids = new Set();
+      if (user.client_id) ids.add(user.client_id);
+      if (client_ids_str) {
+        client_ids_str.split(',').forEach(id => {
+          if (id && id.trim()) ids.add(id.trim());
+        });
+      }
+      user.client_ids = Array.from(ids);
+      return user;
+    });
   }
 
   async getUserClients(userId) {
     const [rows] = await db.query(
-      `SELECT c.* FROM clients c
-       JOIN user_clients uc ON c.id = uc.client_id
-       WHERE uc.user_id = ? AND uc.is_active = 1 AND c.is_active = 1`,
-      [userId]
+      `SELECT DISTINCT c.* FROM clients c
+       LEFT JOIN user_clients uc ON c.id = uc.client_id AND uc.user_id = ? AND uc.is_active = 1
+       LEFT JOIN users u ON u.id = ? AND u.client_id = c.id
+       WHERE (uc.user_id IS NOT NULL OR u.client_id IS NOT NULL) AND c.is_active = 1`,
+      [userId, userId]
     );
     return rows;
   }
@@ -70,19 +87,42 @@ class UserRepository {
         user.is_active !== false ? 1 : 0
       ]
     );
+    if (Array.isArray(user.client_ids)) {
+      for (const cid of user.client_ids) {
+        if (cid && cid.toString().trim()) {
+          await db.query(
+            `INSERT INTO user_clients (user_id, client_id, is_active) VALUES (?, ?, 1) ON DUPLICATE KEY UPDATE is_active=1`,
+            [user.id, cid.toString().trim()]
+          );
+        }
+      }
+    }
     return result;
   }
 
   async update(id, updates) {
+    const { client_ids, ...dbUpdates } = updates;
+    if (Array.isArray(client_ids)) {
+      await db.query(`DELETE FROM user_clients WHERE user_id = ?`, [id]);
+      for (const cid of client_ids) {
+        if (cid && cid.toString().trim()) {
+          await db.query(
+            `INSERT INTO user_clients (user_id, client_id, is_active) VALUES (?, ?, 1)`,
+            [id, cid.toString().trim()]
+          );
+        }
+      }
+    }
     const fields = [];
     const values = [];
-    for (const [k, v] of Object.entries(updates)) {
+    for (const [k, v] of Object.entries(dbUpdates)) {
       fields.push(`${k} = ?`);
       values.push(v);
     }
-    if (fields.length === 0) return;
-    values.push(id);
-    await db.query(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
+    if (fields.length > 0) {
+      values.push(id);
+      await db.query(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, values);
+    }
   }
 
   async delete(id) {
