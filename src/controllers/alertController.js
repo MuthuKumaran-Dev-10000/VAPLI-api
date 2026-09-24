@@ -43,6 +43,24 @@ class AlertController {
     }
   }
 
+  async updateAlert(req, res, next) {
+    try {
+      const result = await alertService.updateAlert(req.params.clientId, req.params.alertId, req.body, req.user);
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async createCompletedTask(req, res, next) {
+    try {
+      const result = await alertService.createCompletedTask(req.params.clientId, req.body, req.user);
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async getCompletedTasks(req, res, next) {
     try {
       const tasks = await alertService.getCompletedTasks(req.params.clientId);

@@ -9,7 +9,7 @@ class UploadService {
     }
 
     const uploadRoot = process.env.UPLOAD_ROOT || './uploads';
-    const validCategory = (category || 'general').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    const validCategory = (category || 'general').replace(/[^a-zA-Z0-9_-]/g, '') || 'general';
     const targetDir = path.join(uploadRoot, validCategory);
     
     if (!fs.existsSync(targetDir)) {

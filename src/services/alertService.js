@@ -44,6 +44,28 @@ class AlertService {
     return { success: true, taskId };
   }
 
+  async updateAlert(clientId, alertId, updateData, userContext) {
+    logger.info(`Updating alert ${alertId} for client ${clientId}`);
+    await alertRepository.updateAlertStatus(clientId, alertId, updateData);
+    return { success: true };
+  }
+
+  async createCompletedTask(clientId, taskData, userContext) {
+    logger.info(`Creating completed task for client ${clientId}`);
+    const taskId = taskData.id || ('task_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
+    const photoUrls = taskData.completed_photo_urls || taskData.photo_urls || (taskData.completed_photo_url ? [taskData.completed_photo_url] : []);
+    await alertRepository.createCompletedTask({
+      id: taskId,
+      client_id: clientId,
+      alert_id: taskData.alert_id || null,
+      completed_by: userContext ? userContext.userId : null,
+      completed_by_name: taskData.completed_by || (userContext ? (userContext.username || userContext.name) : 'Inspector'),
+      description: taskData.completed_description || taskData.description || 'Task completed',
+      photo_urls: photoUrls
+    });
+    return { success: true, id: taskId };
+  }
+
   async getCompletedTasks(clientId) {
     return await alertRepository.getCompletedTasks(clientId);
   }
