@@ -62,6 +62,26 @@ class ClientService {
 
     const id = data.id || 'client_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
     await clientRepository.create({ ...data, id, db_key: dbKey });
+
+    // Ensure client has default admin user with privileges_json created
+    const userRepository = require('../repositories/userRepository');
+    const adminUsername = `${dbKey}admin`;
+    const existingUser = await userRepository.findByUsername(adminUsername);
+    if (!existingUser) {
+      const crypto = require('../utils/crypto');
+      const hash = await crypto.hashPassword('Admin123');
+      await userRepository.create({
+        id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        username: adminUsername,
+        password_hash: hash,
+        display_name: `${data.name} Admin`,
+        role: 'admin',
+        client_id: id,
+        client_ids: [id],
+        is_active: 1
+      });
+    }
+
     return await this.getClientById(id);
   }
 
