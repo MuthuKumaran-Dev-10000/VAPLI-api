@@ -11,7 +11,11 @@ class TankRepository {
 
   async getTanks(clientId) {
     const [rows] = await db.query(
-      `SELECT * FROM tanks WHERE client_id = ? AND is_active = 1 ORDER BY tank_name ASC`,
+      `SELECT t.*, n.sort_order 
+       FROM tanks t 
+       LEFT JOIN tank_tree_nodes n ON t.id = n.tank_id AND n.client_id = t.client_id AND n.is_active = 1
+       WHERE t.client_id = ? AND t.is_active = 1 
+       ORDER BY COALESCE(n.sort_order, 999999) ASC, t.tank_name ASC`,
       [clientId]
     );
     return rows;
@@ -95,24 +99,55 @@ class TankRepository {
   }
 
   async saveTreeNode(node) {
-    const nodeType = node.node_type || node.type || (node.tank_id ? 'leaf' : 'folder');
-    await db.query(
-      `INSERT INTO tank_tree_nodes (id, client_id, parent_id, tank_id, node_type, name, zone, path, sort_order, is_active, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-       ON DUPLICATE KEY UPDATE name=VALUES(name), parent_id=VALUES(parent_id), node_type=VALUES(node_type), tank_id=VALUES(tank_id), sort_order=VALUES(sort_order), is_active=VALUES(is_active)`,
-      [
-        node.id,
-        node.client_id,
-        node.parent_id || null,
-        node.tank_id || null,
-        nodeType,
-        node.name,
-        node.zone || null,
-        node.path || null,
-        node.sort_order || 0,
-        node.is_active !== false ? 1 : 0
-      ]
+    const [existing] = await db.query(
+      `SELECT * FROM tank_tree_nodes WHERE id = ? LIMIT 1`,
+      [node.id]
     );
+
+    if (existing[0]) {
+      const fields = [];
+      const values = [];
+
+      if (node.name !== undefined) { fields.push('name = ?'); values.push(node.name); }
+      if (node.parent_id !== undefined) { fields.push('parent_id = ?'); values.push(node.parent_id || null); }
+      if (node.tank_id !== undefined) { fields.push('tank_id = ?'); values.push(node.tank_id || null); }
+      if (node.node_type || node.type) { fields.push('node_type = ?'); values.push(node.node_type || node.type); }
+      if (node.zone !== undefined) { fields.push('zone = ?'); values.push(node.zone || null); }
+      if (node.path !== undefined) { fields.push('path = ?'); values.push(node.path || null); }
+      if (node.sort_order !== undefined || node.order !== undefined) {
+        const orderVal = node.sort_order !== undefined ? node.sort_order : node.order;
+        fields.push('sort_order = ?');
+        values.push(orderVal);
+      }
+      if (node.is_active !== undefined) {
+        fields.push('is_active = ?');
+        values.push(node.is_active ? 1 : 0);
+      }
+
+      if (fields.length > 0) {
+        values.push(node.id);
+        await db.query(`UPDATE tank_tree_nodes SET ${fields.join(', ')} WHERE id = ?`, values);
+      }
+    } else {
+      const nodeType = node.node_type || node.type || (node.tank_id ? 'leaf' : 'folder');
+      const sortOrder = node.sort_order !== undefined ? node.sort_order : (node.order || 0);
+      await db.query(
+        `INSERT INTO tank_tree_nodes (id, client_id, parent_id, tank_id, node_type, name, zone, path, sort_order, is_active, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          node.id,
+          node.client_id,
+          node.parent_id || null,
+          node.tank_id || null,
+          nodeType,
+          node.name || 'Untitled Node',
+          node.zone || null,
+          node.path || null,
+          sortOrder,
+          node.is_active !== false ? 1 : 0
+        ]
+      );
+    }
   }
 
   async deleteTreeNode(clientId, nodeId) {
