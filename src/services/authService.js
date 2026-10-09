@@ -25,7 +25,8 @@ class AuthService {
       throw { statusCode: 403, code: 'ACCOUNT_LOCKED', message: `Account locked until ${user.locked_until}` };
     }
 
-    const isValid = cryptoUtil.verifyPassword(password, user.password_hash, user.extra_json?.password_hash);
+    const extraHash = (user.extra_json && typeof user.extra_json === 'object') ? user.extra_json.password_hash : null;
+    const isValid = cryptoUtil.verifyPassword(password, user.password_hash, extraHash);
     if (!isValid) {
       await userRepository.recordLoginFailure(user.id);
       logger.warn(`Invalid password for user: ${username}`);

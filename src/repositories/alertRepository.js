@@ -135,9 +135,10 @@ class AlertRepository {
   }
 
   async createCompletedTask(taskData) {
+    const alertSnapshot = taskData.alert_json || (taskData.alert ? { alert: taskData.alert } : null);
     await db.query(
-      `INSERT INTO completed_tasks (id, client_id, alert_id, completed_at, completed_by, completed_by_name, description, photo_urls_json)
-       VALUES (?, ?, ?, NOW(), ?, ?, ?, ?)`,
+      `INSERT INTO completed_tasks (id, client_id, alert_id, completed_at, completed_by, completed_by_name, description, photo_urls_json, alert_json)
+       VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?)`,
       [
         taskData.id,
         taskData.client_id,
@@ -145,14 +146,21 @@ class AlertRepository {
         taskData.completed_by || null,
         taskData.completed_by_name || null,
         taskData.description || null,
-        JSON.stringify(taskData.photo_urls || [])
+        JSON.stringify(taskData.photo_urls || []),
+        alertSnapshot ? JSON.stringify(alertSnapshot) : null,
       ]
     );
   }
 
   async getCompletedTasks(clientId) {
     const [rows] = await db.query(
-      `SELECT * FROM completed_tasks WHERE client_id = ? ORDER BY completed_at DESC`,
+      `SELECT ct.*,
+              a.capture_image_url AS alert_capture_image_url,
+              a.extra_json AS alert_extra_json
+       FROM completed_tasks ct
+       LEFT JOIN alerts a ON a.id = ct.alert_id AND a.client_id = ct.client_id
+       WHERE ct.client_id = ?
+       ORDER BY ct.completed_at DESC`,
       [clientId]
     );
     return rows;

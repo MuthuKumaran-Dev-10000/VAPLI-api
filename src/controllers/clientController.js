@@ -54,6 +54,20 @@ class ClientController {
       next(err);
     }
   }
+
+  async updateSetting(req, res, next) {
+    try {
+      const { key, value } = req.body || {};
+      const result = await clientService.updateClientSetting(
+        req.params.clientId,
+        key,
+        value
+      );
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 module.exports = new ClientController();

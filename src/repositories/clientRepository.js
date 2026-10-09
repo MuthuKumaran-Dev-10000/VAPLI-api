@@ -20,11 +20,32 @@ class ClientRepository {
     return result;
   }
 
+  _coerceJsonValue(val) {
+    if (val === null || val === undefined) return val;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try {
+          return JSON.parse(trimmed);
+        } catch (_) {
+          return val;
+        }
+      }
+    }
+    return val;
+  }
+
   async getSettings(clientId) {
     const [rows] = await db.query(`SELECT key_name, json_value, bool_value, string_value FROM client_settings WHERE client_id = ?`, [clientId]);
     const result = {};
     for (const r of rows) {
-      result[r.key_name] = r.json_value !== null ? r.json_value : (r.bool_value !== null ? !!r.bool_value : r.string_value);
+      if (r.json_value !== null && r.json_value !== undefined) {
+        result[r.key_name] = this._coerceJsonValue(r.json_value);
+      } else if (r.bool_value !== null) {
+        result[r.key_name] = !!r.bool_value;
+      } else {
+        result[r.key_name] = r.string_value;
+      }
     }
     return result;
   }

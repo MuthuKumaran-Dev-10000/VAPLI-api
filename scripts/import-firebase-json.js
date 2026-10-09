@@ -1,3 +1,10 @@
+// DISABLED: use repo-root migrate.py for Firebase JSON -> MySQL.
+console.error(
+  'import-firebase-json.js is disabled. Use: python3 migrate.py --json <db.json> --schema VAPLI_DB.sql --reset-db ...'
+);
+process.exit(1);
+
+/*
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
@@ -659,3 +666,4 @@ async function runImporter() {
 }
 
 runImporter();
+*/

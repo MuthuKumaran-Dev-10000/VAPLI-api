@@ -15,7 +15,9 @@ const server = app.listen(PORT, HOST, () => {
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Promise Rejection', { reason: reason?.message || reason, stack: reason?.stack });
+  const msg = (reason && reason.message) ? reason.message : reason;
+  const stk = (reason && reason.stack) ? reason.stack : undefined;
+  logger.error('Unhandled Promise Rejection', { reason: msg, stack: stk });
 });
 
 process.on('uncaughtException', (err) => {

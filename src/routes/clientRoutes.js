@@ -15,5 +15,6 @@ router.get('/:clientId', verifyTenantAccess, clientController.getClientById.bind
 router.put('/:clientId', verifyTenantAccess, clientController.updateClient.bind(clientController));
 router.delete('/:clientId', verifyTenantAccess, clientController.deleteClient.bind(clientController));
 router.get('/:clientId/bootstrap', verifyTenantAccess, clientController.bootstrap.bind(clientController));
+router.put('/:clientId/settings', verifyTenantAccess, clientController.updateSetting.bind(clientController));
 
 module.exports = router;

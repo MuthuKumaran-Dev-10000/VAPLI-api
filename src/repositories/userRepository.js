@@ -19,7 +19,7 @@ class UserRepository {
 
   async findAll() {
     const [rows] = await db.query(
-      `SELECT u.id, u.username, u.display_name, u.email, u.phone, u.role, u.client_id, u.is_active, u.created_at, u.last_login_at, u.privileges_json,
+      `SELECT u.id, u.username, u.display_name, u.email, u.phone, u.role, u.is_active, u.created_at, u.last_login_at, u.privileges_json,
               GROUP_CONCAT(uc.client_id) AS client_ids_str
        FROM users u
        LEFT JOIN user_clients uc ON u.id = uc.user_id AND uc.is_active = 1
@@ -29,7 +29,6 @@ class UserRepository {
     return rows.map(r => {
       const { client_ids_str, ...user } = r;
       const ids = new Set();
-      if (user.client_id) ids.add(user.client_id);
       if (client_ids_str) {
         client_ids_str.split(',').forEach(id => {
           if (id && id.trim()) ids.add(id.trim());
@@ -52,12 +51,26 @@ class UserRepository {
   }
 
   async getUserClients(userId) {
+    const [userRows] = await db.query('SELECT role FROM users WHERE id = ?', [userId]);
+    const userRole = userRows.length > 0 ? userRows[0].role : 'user';
+    
+    const roleNorm = (userRole || '').toString().trim().toLowerCase();
+    if (
+      roleNorm === 'super admin' ||
+      roleNorm === 'super_admin' ||
+      roleNorm === 'superadmin' ||
+      roleNorm === 'admin'
+    ) {
+      const [allClients] = await db.query('SELECT * FROM clients WHERE is_active = 1 ORDER BY name ASC');
+      return allClients;
+    }
+    
     const [rows] = await db.query(
       `SELECT DISTINCT c.* FROM clients c
-       LEFT JOIN user_clients uc ON c.id = uc.client_id AND uc.user_id = ? AND uc.is_active = 1
-       LEFT JOIN users u ON u.id = ? AND u.client_id = c.id
-       WHERE (uc.user_id IS NOT NULL OR u.client_id IS NOT NULL) AND c.is_active = 1`,
-      [userId, userId]
+       JOIN user_clients uc ON c.id = uc.client_id
+       WHERE uc.user_id = ? AND uc.is_active = 1 AND c.is_active = 1
+       ORDER BY c.name ASC`,
+      [userId]
     );
     return rows;
   }
@@ -122,8 +135,8 @@ class UserRepository {
     const privilegesJson = JSON.stringify(privObj);
 
     const [result] = await db.query(
-      `INSERT INTO users (id, username, password_hash, display_name, email, phone, role, client_id, is_active, privileges_json, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      `INSERT INTO users (id, username, password_hash, display_name, email, phone, role, is_active, privileges_json, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         user.id,
         user.username,
@@ -132,7 +145,6 @@ class UserRepository {
         user.email || null,
         user.phone || null,
         user.role || 'user',
-        primaryClientId,
         user.is_active !== false ? 1 : 0,
         privilegesJson
       ]
@@ -147,12 +159,12 @@ class UserRepository {
   }
 
   async update(id, updates) {
-    const { client_ids, privileges, privileges_json, ...dbUpdates } = updates;
+    const { client_ids, privileges, privileges_json, client_id, ...dbUpdates } = updates;
     let clientIds = null;
     if (Array.isArray(client_ids)) {
       clientIds = client_ids.map(c => c.toString().trim()).filter(Boolean);
-    } else if (updates.client_id) {
-      clientIds = [updates.client_id.toString().trim()];
+    } else if (client_id) {
+      clientIds = [client_id.toString().trim()];
     }
 
     if (clientIds !== null) {
@@ -163,7 +175,6 @@ class UserRepository {
           [id, cid]
         );
       }
-      dbUpdates.client_id = clientIds.length > 0 ? clientIds[0] : null;
     }
 
     let privObj = privileges || privileges_json;

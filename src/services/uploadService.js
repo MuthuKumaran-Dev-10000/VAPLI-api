@@ -2,8 +2,24 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('../utils/logger');
 
+function resolvePublicBaseUrl(requestOrigin) {
+  const env = (process.env.PUBLIC_BASE_URL || '').replace(/\/$/, '');
+  const isLoopback =
+    !env ||
+    env.includes('127.0.0.1') ||
+    env.includes('localhost');
+  if (!isLoopback) {
+    return env;
+  }
+  const fromRequest = (requestOrigin || '').replace(/\/$/, '');
+  if (fromRequest) {
+    return fromRequest;
+  }
+  return env || 'http://127.0.0.1:8081';
+}
+
 class UploadService {
-  async processUploadedFile(file, clientDbKey = 'global', category = 'general') {
+  async processUploadedFile(file, clientDbKey = 'global', category = 'general', requestOrigin = '') {
     if (!file) {
       throw { statusCode: 400, code: 'NO_FILE', message: 'No file was uploaded' };
     }
@@ -23,7 +39,7 @@ class UploadService {
     fs.renameSync(file.path, targetPath);
 
     const relativePath = path.relative(uploadRoot, targetPath).replace(/\\/g, '/');
-    const baseUrl = process.env.PUBLIC_BASE_URL || 'http://127.0.0.1:8081';
+    const baseUrl = resolvePublicBaseUrl(requestOrigin);
     const publicUrl = `${baseUrl}/uploads/${relativePath}`;
 
     logger.info(`File uploaded successfully to ${validCategory}: ${fileName} (${publicUrl})`);

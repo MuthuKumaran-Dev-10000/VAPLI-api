@@ -95,6 +95,52 @@ class ClientService {
     await this.getClientById(clientId);
     await clientRepository.delete(clientId);
   }
+
+  /**
+   * Upsert one client_settings row. Supports nested keys with slashes
+   * (e.g. report_format/param_colors/foo merges into report_format JSON).
+   */
+  async updateClientSetting(clientId, key, value) {
+    await this.getClientById(clientId);
+    if (!key || typeof key !== 'string') {
+      throw { statusCode: 400, code: 'INVALID_INPUT', message: 'Setting key is required' };
+    }
+    const trimmedKey = key.trim();
+    if (!trimmedKey) {
+      throw { statusCode: 400, code: 'INVALID_INPUT', message: 'Setting key is required' };
+    }
+
+    if (trimmedKey.includes('/')) {
+      const parts = trimmedKey.split('/').filter(Boolean);
+      const rootKey = parts[0];
+      const settings = await clientRepository.getSettings(clientId);
+      let root = settings[rootKey];
+      if (root && typeof root === 'string') {
+        try {
+          root = JSON.parse(root);
+        } catch (_) {
+          root = {};
+        }
+      }
+      if (!root || typeof root !== 'object' || Array.isArray(root)) {
+        root = {};
+      }
+      let cursor = root;
+      for (let i = 1; i < parts.length - 1; i++) {
+        const seg = parts[i];
+        if (!cursor[seg] || typeof cursor[seg] !== 'object' || Array.isArray(cursor[seg])) {
+          cursor[seg] = {};
+        }
+        cursor = cursor[seg];
+      }
+      cursor[parts[parts.length - 1]] = value;
+      await clientRepository.setSetting(clientId, rootKey, root);
+      return { key: rootKey, value: root };
+    }
+
+    await clientRepository.setSetting(clientId, trimmedKey, value);
+    return { key: trimmedKey, value };
+  }
 }
 
 module.exports = new ClientService();
